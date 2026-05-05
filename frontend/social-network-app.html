@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TechConnect — Student Peer Networking</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary:    #020409;
+      --bg-secondary:  #080d18;
+      --bg-card:       #0d1421;
+      --bg-card-hover: #121b2e;
+      --border:        rgba(255,255,255,0.06);
+      --border-bright: rgba(99,102,241,0.4);
+      --text-primary:  #eef2ff;
+      --text-secondary:#7c8db5;
+      --text-muted:    #3d4f6e;
+      --accent-bfs:    #818cf8;
+      --accent-dfs:    #c084fc;
+      --accent-green:  #34d399;
+      --accent-amber:  #fbbf24;
+      --accent-pink:   #f472b6;
+      --font-main:     'Plus Jakarta Sans', 'Inter', sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+      --radius-lg:     16px;
+      --radius-md:     12px;
+      --radius-sm:     8px;
+      --shadow-glow:   0 0 40px rgba(99,102,241,0.12);
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; color: var(--text-primary); font-family: var(--font-main); overflow-x: hidden; }
+
+    body {
+      background: var(--bg-primary);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(99,102,241,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 90% 110%, rgba(192,132,252,0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(20,184,166,0.03) 0%, transparent 50%);
+    }
+
+    #root { min-height: 100vh; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+
+    /* ── Animations ─────────────────────────────── */
+    @keyframes fadeUp    { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
+    @keyframes float     { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+    @keyframes pulse     { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.4);} 70%{box-shadow:0 0 0 8px rgba(99,102,241,0);} }
+    @keyframes shimmer   { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
+    @keyframes slideIn   { from{transform:translateX(-8px);opacity:0;} to{transform:translateX(0);opacity:1;} }
+    @keyframes scaleIn   { from{transform:scale(0.95);opacity:0;} to{transform:scale(1);opacity:1;} }
+    @keyframes glow      { 0%,100%{box-shadow:0 0 20px rgba(99,102,241,0.15);} 50%{box-shadow:0 0 35px rgba(99,102,241,0.3);} }
+
+    .animate-fade { animation: fadeUp 0.45s cubic-bezier(.16,1,.3,1) forwards; }
+
+    /* ── Layout ─────────────────────────────────── */
+    .app-shell { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 252px; min-width: 252px;
+      background: rgba(8,13,24,0.95);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0;
+      position: sticky; top: 0; height: 100vh;
+      overflow-y: auto;
+    }
+
+    .main { flex: 1; overflow: hidden; min-width: 0; }
+
+    .topbar {
+      height: 58px;
+      background: rgba(8,13,24,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 28px; gap: 16px;
+      position: sticky; top: 0; z-index: 10;
+    }
+
+    .content { padding: 28px; }
+
+    /* ── Logo ───────────────────────────────────── */
+    .logo {
+      padding: 22px 20px 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+      animation: glow 3s ease-in-out infinite;
+    }
+    .logo-text { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo-text span {
+      background: linear-gradient(90deg, #818cf8, #c084fc);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* ── Nav ────────────────────────────────────── */
+    .nav-section { padding: 0 12px; margin-bottom: 6px; }
+    .nav-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.8px; color: var(--text-muted);
+      text-transform: uppercase; padding: 0 10px;
+      margin-bottom: 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      cursor: pointer; color: var(--text-secondary);
+      font-size: 13.5px; font-weight: 500;
+      transition: all 0.18s cubic-bezier(.16,1,.3,1);
+      border: 1px solid transparent;
+      animation: slideIn 0.3s ease forwards;
+    }
+    .nav-item:hover {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-primary);
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: rgba(99,102,241,0.12);
+      border-color: rgba(99,102,241,0.2);
+      color: var(--accent-bfs);
+      font-weight: 600;
+    }
+    .nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+
+    /* ── Cards ──────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      transition: all 0.22s cubic-bezier(.16,1,.3,1);
+    }
+    .card:hover {
+      border-color: rgba(99,102,241,0.22);
+      background: var(--bg-card-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-glow), var(--shadow-card);
+    }
+
+    /* ── User Grid ──────────────────────────────── */
+    .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+    .user-card {
+      padding: 20px; position: relative; overflow: hidden;
+      animation: scaleIn 0.35s cubic-bezier(.16,1,.3,1) forwards;
+      text-align: center;
+    }
+    .user-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .user-avatar {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; color: white;
+      margin: 0 auto 12px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .user-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .user-bio { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.4; }
+
+    /* ── Reco Cards ─────────────────────────────── */
+    .reco-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .reco-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+      animation: fadeUp 0.35s ease forwards;
+    }
+    .reco-card:hover {
+      background: rgba(99,102,241,0.06);
+      border-color: rgba(99,102,241,0.2);
+      transform: translateX(4px);
+    }
+
+    /* ── Graph ──────────────────────────────────── */
+    .graph-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .graph-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+
+    /* ── Typography ─────────────────────────────── */
+    .section-title { font-size: 21px; font-weight: 800; letter-spacing: -0.4px; }
+
+    /* ── Forms ──────────────────────────────────── */
+    .form-label {
+      font-size: 11px; color: var(--text-secondary); font-weight: 600;
+      margin-bottom: 6px; display: block;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .form-input, .form-select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-family: var(--font-main); font-size: 14px; font-weight: 500;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: rgba(99,102,241,0.5);
+      background: rgba(99,102,241,0.06);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+    .form-select { cursor: pointer; }
+    .form-select option { background: var(--bg-card); }
+
+    /* ── Buttons ────────────────────────────────── */
+    .btn {
+      padding: 10px 20px; border-radius: var(--radius-sm);
+      cursor: pointer; font-family: var(--font-main);
+      font-size: 13.5px; font-weight: 700;
+      transition: all 0.18s cubic-bezier(.16,1,.3,1);
+      border: 1px solid transparent;
+      letter-spacing: 0.2px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.45);
+    }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Misc ───────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 56px 20px;
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+    }
+
+    .path-block { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .path-node {
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: var(--accent-bfs);
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600;
+      transition: all 0.15s;
+    }
+    .path-node:hover { background: rgba(99,102,241,0.2); }
+    .path-arrow { color: var(--text-muted); font-size: 12px; }
+
+    .community-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px;
+      transition: all 0.2s;
+    }
+    .community-card:hover { border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.04); }
+
+    .badge-bfs {
+      background: rgba(129,140,248,0.1);
+      color: var(--accent-bfs);
+      border: 1px solid rgba(129,140,248,0.25);
+      display: inline-flex; align-items: center;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 11.5px; font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.3px;
+      animation: pulse 2.5s infinite;
+    }
+  </style>
+</head>
+<body>
+<canvas id="bg-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+<div id="root" style="position:relative;z-index:1;"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+// If you serve this HTML from another device on your LAN, this keeps the API pointing at the same host.
+const API_BASE = 'http://localhost:4000';
+
+function Avatar({ user, size = 44, animate = false }) {
+  if (!user) return null;
+  return (
+    <div className="user-avatar" style={{
+      width: size, height: size, background: user.color || '#333', borderRadius: size * 0.27,
+      fontSize: size * 0.33, animation: animate ? 'float 3s ease-in-out infinite' : 'none', flexShrink: 0
+    }}>
+      {user.avatar || 'U'}
+    </div>
+  );
+}
+
+// ─── D3 GRAPH VISUALIZATION ────────────────────────────────────────────────────
+function GraphVisualization({ users, edges, selectedUser, onSelectUser }) {
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    if (!svgRef.current || users.length === 0) return;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
+
+    const w = svgRef.current.clientWidth || 700;
+    const h = 440;
+    const container = svg.append('g');
+
+    svg.call(d3.zoom().scaleExtent([0.4, 3]).on('zoom', (e) => {
+      container.attr('transform', e.transform);
+    }));
+
+    const simEdges = edges.map(e => ({ ...e }));
+    const simulation = d3.forceSimulation(users.map(u => ({ ...u })))
+      .force('link', d3.forceLink(simEdges).id(d => d.id).distance(100).strength(0.3))
+      .force('charge', d3.forceManyBody().strength(-300))
+      .force('center', d3.forceCenter(w / 2, h / 2))
+      .force('collision', d3.forceCollide(32));
+
+    const link = container.append('g').selectAll('line').data(simEdges).join('line')
+      .attr('stroke', 'rgba(255,255,255,0.08)').attr('stroke-width', 1.5);
+
+    const hlLink = container.append('g').selectAll('line').data(
+      simEdges.filter(e => e.source.id === selectedUser || e.target.id === selectedUser)
+    ).join('line')
+      .attr('stroke', '#6366f1').attr('stroke-width', 2).attr('stroke-opacity', 0.6);
+
+    const node = container.append('g').selectAll('g').data(simulation.nodes()).join('g')
+      .style('cursor', 'pointer')
+      .on('click', (_, d) => onSelectUser(d.id))
+      .call(d3.drag()
+        .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+        .on('end',   (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+      );
+
+    node.append('circle')
+      .attr('r', d => d.id === selectedUser ? 22 : 18)
+      .attr('fill', d => d.color)
+      .attr('fill-opacity', d => d.id === selectedUser ? 1 : 0.85)
+      .attr('stroke', d => d.id === selectedUser ? '#fff' : 'rgba(255,255,255,0.15)')
+      .attr('stroke-width', d => d.id === selectedUser ? 2.5 : 1);
+
+    node.append('text')
+      .text(d => d.avatar)
+      .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+      .attr('fill', 'white').attr('font-size', 11).attr('font-weight', 700)
+      .attr('font-family', 'Space Grotesk, sans-serif');
+
+    node.append('text')
+      .text(d => d.name.split(' ')[0])
+      .attr('text-anchor', 'middle').attr('dy', 30)
+      .attr('fill', 'rgba(255,255,255,0.5)').attr('font-size', 9)
+      .attr('font-family', 'Space Grotesk, sans-serif');
+
+    simulation.on('tick', () => {
+      link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      hlLink.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    return () => simulation.stop();
+  }, [users, edges, selectedUser]);
+
+  return (
+    <div className="graph-container animate-fade">
+      <div className="graph-header">
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Network Graph Dashboard</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>D3.js Force-Directed</div>
+        </div>
+      </div>
+      <div className="graph-canvas" style={{ display: 'block' }}>
+        <svg ref={svgRef} style={{ width: '100%', height: '440px', display: 'block' }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── TRIE SEARCH BAR ───────────────────────────────────────────────────────────
+function TrieSearchBar({ onSelect }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/search/name?q=${encodeURIComponent(q.trim())}`).then(r => r.json());
+        setResults(res.users || []);
+        setOpen(true);
+      } catch(e) { console.error(e); }
+    }, 150); // 150ms debounce
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  function pick(id) {
+    onSelect(id);
+    setQ('');
+    setResults([]);
+    setOpen(false);
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        className="form-input"
+        placeholder="Type a name prefix…"
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        style={{ width: '100%' }}
+      />
+      {open && results.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+          background: '#1a1a2e', border: '1px solid var(--border)',
+          borderRadius: 8, marginTop: 4, overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
+        }}>
+          {results.map(u => (
+            <div key={u.id} onMouseDown={() => pick(u.id)} style={{
+              padding: '8px 12px', cursor: 'pointer', fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 8,
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Avatar user={u} size={22} />
+              <div>
+                <div style={{ fontWeight: 600 }}>{u.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.bio}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {open && results.length === 0 && q && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+          background: '#1a1a2e', border: '1px solid var(--border)', borderRadius: 8,
+          marginTop: 4, padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+          No students found for "{q}"
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TABS ──────────────────────────────────────────────────────────────────────
+
+function RoleSearchTab({ selectedUser, users }) {
+  const [mode, setMode] = useState('role'); // 'role' | 'dfs'
+  const [targetRole, setTargetRole] = useState('Software Engineer');
+  const [recs, setRecs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [friendStatus, setFriendStatus] = useState({});
+
+  async function fetchRoleMatches() {
+    if (!selectedUser) return;
+    setLoading(true); setRecs([]);
+    try {
+      let res;
+      if (mode === 'dfs') {
+        res = await fetch(`${API_BASE}/recommend/dfs/${selectedUser}`).then(r => r.json());
+      } else {
+        if (!targetRole) { setLoading(false); return; }
+        res = await fetch(`${API_BASE}/recommend/role/${selectedUser}?role=${encodeURIComponent(targetRole)}`).then(r => r.json());
+      }
+      setRecs(res.recommendations || []);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  }
+
+  async function addFriend(peerId) {
+    setFriendStatus(prev => ({ ...prev, [peerId]: 'loading' }));
+    try {
+      const res = await fetch(`${API_BASE}/add-friend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId1: selectedUser, userId2: peerId })
+      }).then(r => r.json());
+      setFriendStatus(prev => ({ ...prev, [peerId]: res.success ? 'added' : 'error' }));
+    } catch(e) {
+      setFriendStatus(prev => ({ ...prev, [peerId]: 'error' }));
+    }
+  }
+
+  useEffect(() => { fetchRoleMatches(); }, [selectedUser, mode]);
+
+  return (
+    <div className="card animate-fade" style={{padding: 24}}>
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 4 }}>
+        <button onClick={() => setMode('role')} style={{
+          flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-main)', fontSize: 13, fontWeight: 700,
+          background: mode === 'role' ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'transparent',
+          color: mode === 'role' ? 'white' : 'var(--text-secondary)',
+          transition: 'all 0.2s'
+        }}>🎯 Role Finder (BFS)</button>
+        <button onClick={() => setMode('dfs')} style={{
+          flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-main)', fontSize: 13, fontWeight: 700,
+          background: mode === 'dfs' ? 'linear-gradient(135deg,#c084fc,#f472b6)' : 'transparent',
+          color: mode === 'dfs' ? 'white' : 'var(--text-secondary)',
+          transition: 'all 0.2s'
+        }}>🔭 Deep Explorer (DFS)</button>
+      </div>
+
+      {mode === 'role' ? (
+        <div style={{display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20}}>
+          <div style={{flex: 1}}>
+            <label className="form-label">Find Peer By Tech Role</label>
+            <div style={{display:'flex', gap: 10}}>
+              <input type="text" className="form-input" value={targetRole} onChange={e=>setTargetRole(e.target.value)} placeholder="e.g. ML Engineer" />
+              <button className="btn btn-primary" onClick={fetchRoleMatches}>Search Network</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: 'rgba(192,132,252,0.08)', borderRadius: 8, border: '1px solid rgba(192,132,252,0.2)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#c084fc', marginBottom: 4 }}>🔭 Deep Network Explorer — DFS Mode</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            Explores up to <strong>3 hops deep</strong> into your network. Scores people by mutual friends + a depth bonus — discovers hidden connections BFS never surfaces.
+          </div>
+        </div>
+      )}
+
+      <div style={{display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16}}>
+        <span className="badge-bfs">{mode === 'dfs' ? '🔭 DFS Deep Traversal — depth bonus scoring' : '⚙️ BFS Role Search Engine Active'}</span>
+      </div>
+
+      {loading ? <div className="empty-state">Traversing network...</div> :
+        <div className="reco-list">
+          {recs.length === 0 ? <div className="empty-state">No connections found. Try switching mode or updating your profile.</div> :
+            recs.map(r => {
+              const status = friendStatus[r.id];
+              return (
+                <div key={r.id} className="reco-card">
+                  <Avatar user={r} size={40} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {r.bio} | 🎓 {r.branch || r.location} | Year {r.year}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      {mode === 'dfs'
+                        ? `🔭 Deep discovery · Mutuals: ${r.mutualCount || 0} · Score: ${r.finalScore || r.score || '—'}`
+                        : `Mutuals: ${r.mutualCount} | Shared Interests: ${r.sharedInterests} | Community Match: ${r.sameCommunity ? 'Yes' : 'No'} | Rating: ${r.finalScore}`
+                      }
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => addFriend(r.id)}
+                    disabled={status === 'added' || status === 'loading'}
+                    style={{
+                      padding: '6px 14px', borderRadius: 8, border: 'none', cursor: status === 'added' ? 'default' : 'pointer',
+                      fontFamily: 'var(--font-main)', fontSize: 12, fontWeight: 600, flexShrink: 0,
+                      background: status === 'added' ? 'rgba(52,211,153,0.2)' : status === 'error' ? 'rgba(244,63,94,0.2)' : 'rgba(99,102,241,0.2)',
+                      color: status === 'added' ? 'var(--accent-green)' : status === 'error' ? '#f43f5e' : 'var(--accent-bfs)',
+                    }}
+                  >
+                    {status === 'added' ? '✓ Connected' : status === 'loading' ? '...' : status === 'error' ? 'Failed' : '+ Add Friend'}
+                  </button>
+                </div>
+              );
+            })
+          }
+        </div>
+      }
+    </div>
+  );
+}
+
+function PathfinderTab({ users }) {
+  const [src, setSrc] = useState(users.length > 0 ? users[0].id : '');
+  const [tgt, setTgt] = useState(users.length > 1 ? users[1].id : '');
+  const [pathBFS, setPathBFS] = useState(null);
+  const [pathDijkstra, setPathDijkstra] = useState(null);
+
+  useEffect(() => {
+    if (users.length && !src) setSrc(users[0].id);
+    if (users.length && !tgt) setTgt(users[1]?.id || users[0].id);
+  }, [users]);
+
+  async function calculateRoutes() {
+    if (!src || !tgt) return;
+    try {
+      const pB = await fetch(`${API_BASE}/path/bfs/${src}/${tgt}`).then(r => r.json());
+      const pD = await fetch(`${API_BASE}/path/dijkstra/${src}/${tgt}`).then(r => r.json());
+      setPathBFS(pB.success ? pB : null);
+      setPathDijkstra(pD.success ? pD : null);
+    } catch(e) { console.error(e); }
+  }
+
+  function renderPath(res, isDijkstra) {
+    if (!res) return <div className="empty-state" style={{padding: '20px 0'}}>No connection found</div>;
+    return (
+      <div>
+        <div style={{fontSize: 13, marginBottom: 10, color: 'var(--text-secondary)'}}>
+          {isDijkstra ? `Total Route Weight (Connections): ${res.totalWeight}` : `Degrees of Separation (Jumps): ${res.degreesOfSeparation}`}
+        </div>
+        <div className="path-block">
+          {res.path.map((u, i) => (
+            <React.Fragment key={u.id + i}>
+              <div className="path-node" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Avatar user={u} size={20} /> {u.name}
+              </div>
+              {i < res.path.length - 1 && <span className="path-arrow">→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card animate-fade" style={{padding: '24px'}}>
+      <div className="section-title" style={{marginBottom: 20}}>🤝 Connection Bridge</div>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
+        <div style={{ flex: 1 }}>
+          <label className="form-label">Source Node</label>
+          <select className="form-select" value={src} onChange={e => setSrc(e.target.value)}>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="form-label">Target Node</label>
+          <select className="form-select" value={tgt} onChange={e => setTgt(e.target.value)}>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <button className="btn btn-primary" onClick={calculateRoutes}>Compute Routes</button>
+        </div>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ background: 'rgba(255,255,255,0.03)', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 16 }}>🔵 Fewest Connections Path</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Finds route with fewest user jumps</div>
+          {renderPath(pathBFS, false)}
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.03)', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 16 }}>🟣 Strongest Synergy Route</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Minimizes total edge interaction metric weight</div>
+          {renderPath(pathDijkstra, true)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KnowYourCircleTab({ selectedUser }) {
+  const [comms, setComms] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  useEffect(() => {
+    fetch(`${API_BASE}/communities`).then(r => r.json()).then(d => setComms(d.communities || []));
+  }, [refreshKey]);
+
+  // Find the circle the logged-in user belongs to
+  const myCircle = comms.find(c => c.members.some(m => m.id === selectedUser));
+  const otherCircles = comms.filter(c => c !== myCircle);
+
+  const renderCircle = (c, i, isYours) => (
+    <div key={c.id || i} className="community-card" style={{ border: isYours ? '1px solid var(--accent-bfs)' : '1px solid var(--border)', position: 'relative' }}>
+      {isYours && <div style={{ position: 'absolute', top: 12, right: 14, fontSize: 11, fontWeight: 700, color: 'var(--accent-bfs)', background: 'rgba(99,102,241,0.15)', padding: '2px 10px', borderRadius: 20 }}>YOUR CIRCLE</div>}
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{isYours ? '👥 Your Network Circle' : `Circle ${c.id}`}</div>
+      <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>{c.size} connected students</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {c.members.map(m => (
+          <div key={m.id} style={{ fontSize: 12, background: m.id === selectedUser ? 'rgba(99,102,241,0.3)' : 'var(--bg-card-hover)', border: `1px solid ${m.id === selectedUser ? 'var(--accent-bfs)' : 'var(--border)'}`, padding: '4px 10px', borderRadius: 20, fontWeight: m.id === selectedUser ? 700 : 400 }}>
+            {m.name}{m.id === selectedUser ? ' (You)' : ''}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="animate-fade">
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div className="section-title">👥 Know Your Circle</div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>See which students you're clustered with based on your connections in the network.</div>
+        </div>
+        <button className="btn" onClick={() => setRefreshKey(k => k + 1)}
+          style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontSize: 12, padding: '6px 12px' }}>
+          ↻ Refresh
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        {comms.length === 0 && <div className="empty-state">Loading your circle...</div>}
+        {myCircle && renderCircle(myCircle, 0, true)}
+        {otherCircles.map((c, i) => renderCircle(c, i + 1, false))}
+      </div>
+    </div>
+  );
+}
+
+function AdvancedOperationsTab({ selectedUser }) {
+  const [influencers, setInfluencers] = useState(null);
+  const [myNetwork, setMyNetwork] = useState([]);
+  const [hackTeam, setHackTeam] = useState(null);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [connectAllStatus, setConnectAllStatus] = useState('idle'); // idle | loading | done
+
+  useEffect(() => {
+    async function loadAdvancedData() {
+      try {
+        const v = await fetch(`${API_BASE}/influencers`).then(r => r.json());
+        setInfluencers(v.influencers);
+        // Load user's network to personalize Campus Connectors
+        if (selectedUser) {
+          const u = await fetch(`${API_BASE}/users`).then(r => r.json());
+          const me = (u.users || []).find(x => x.id === selectedUser);
+          const friendIds = new Set((me?.friends || []).map(f => f.id));
+          // Filter influencers: direct friends first, then 2nd-degree
+          const sorted = (v.influencers || []).filter(inf => inf.id !== selectedUser)
+            .sort((a, b) => (friendIds.has(b.id) ? 1 : 0) - (friendIds.has(a.id) ? 1 : 0));
+          setMyNetwork(sorted);
+        }
+      } catch(e) { console.error(e); }
+    }
+    loadAdvancedData();
+  }, [selectedUser]);
+
+  async function buildTeam() {
+    if (!selectedUser) return;
+    setTeamLoading(true); setConnectAllStatus('idle');
+    try {
+      const res = await fetch(`${API_BASE}/hackathon-team/${selectedUser}`).then(r => r.json());
+      setHackTeam(res.team || []);
+    } catch(e) { console.error(e); }
+    setTeamLoading(false);
+  }
+
+  async function connectAllTeammates() {
+    if (!hackTeam) return;
+    setConnectAllStatus('loading');
+    const teammates = hackTeam.filter(m => !m.isYou);
+    await Promise.all(teammates.map(m =>
+      fetch(`${API_BASE}/add-friend`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId1: selectedUser, userId2: m.id })
+      })
+    ));
+    setConnectAllStatus('done');
+  }
+
+  return (
+    <div className="animate-fade">
+      <div style={{ marginBottom: 20 }}>
+        <div className="section-title">🚀 Smart Team Tools</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Practical tools to help you network smarter, build better teams, and find your role.</div>
+      </div>
+      
+      {!influencers ? <div className="empty-state">Loading Smart Team Tools...</div> :
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Influencers */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>📍 Campus Connectors — Who to Meet First</div>
+            <div style={{ fontSize: 13, color:'var(--text-secondary)', marginBottom: 12 }}>New here? Meet just these few people and you'll instantly be connected to the whole network.</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {(myNetwork.length > 0 ? myNetwork : (influencers || [])).slice(0, 8).map((u, i) => (
+                 <div key={'vc'+i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 20, fontSize: 12 }}>
+                   <Avatar user={u} size={20}/> {u.name}
+                 </div>
+              ))}
+            </div>
+          </div>
+          {/* Hackathon Team Builder */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>🛠️ Hackathon Team Builder</div>
+            <div style={{ fontSize: 13, color:'var(--text-secondary)', marginBottom: 14 }}>Builds your ideal 4-person team from your network — each member gets a unique role (ML Lead, Backend, Frontend, DevOps). No two teammates share the same specialty.</div>
+            <button className="btn btn-primary" onClick={buildTeam} disabled={teamLoading} style={{ marginBottom: 16 }}>
+              {teamLoading ? 'Building...' : '🚀 Build My Hackathon Team'}
+            </button>
+            {hackTeam && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 14 }}>
+                  {hackTeam.map((m, i) => (
+                    <div key={m.id + i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: m.isYou ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', borderRadius: 10, border: m.isYou ? '1px solid var(--accent-bfs)' : '1px solid var(--border)' }}>
+                      <Avatar user={m} size={36} />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{m.name}{m.isYou ? ' (You)' : ''}</div>
+                        <div style={{ fontSize: 12, color: 'var(--accent-bfs)', marginTop: 2 }}>{m.assignedRole}</div>
+                        {m.isDirectFriend && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>❤️ Direct Friend</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {connectAllStatus !== 'done' && (
+                  <button className="btn" onClick={connectAllTeammates} disabled={connectAllStatus === 'loading'}
+                    style={{ width: '100%', background: 'rgba(52,211,153,0.12)', color: 'var(--accent-green)', border: '1px solid rgba(52,211,153,0.25)', fontWeight: 700 }}>
+                    {connectAllStatus === 'loading' ? 'Connecting...' : '🤝 Connect with All Teammates'}
+                  </button>
+                )}
+                {connectAllStatus === 'done' && (
+                  <div style={{ textAlign: 'center', color: 'var(--accent-green)', fontSize: 13, fontWeight: 600, padding: 10 }}>
+                    ✓ All teammates connected! Check Know Your Circle to see your updated network.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      }
+    </div>
+  );
+}
+
+function MentorPeerFinderTab({ selectedUser, users }) {
+  const [results, setResults] = useState([]);
+  const [mode, setMode] = useState(null); // 'seniors' | 'batch' | 'juniors'
+  const [loading, setLoading] = useState(false);
+
+  const me = users.find(u => u.id === selectedUser);
+  const myYear = me?.year || 2;
+
+  const YEAR_LABEL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+
+  async function search(chosenMode) {
+    setMode(chosenMode);
+    setLoading(true);
+    let min, max;
+    if (chosenMode === 'seniors')  { min = Math.min(myYear + 1, 4); max = 4; }
+    if (chosenMode === 'batch')    { min = myYear; max = myYear; }
+    if (chosenMode === 'juniors')  { min = 1; max = Math.max(myYear - 1, 1); }
+    try {
+      const res = await fetch(`${API_BASE}/search/year?min=${min}&max=${max}`).then(r => r.json());
+      // Exclude self from results
+      setResults((res.users || []).filter(u => u.id !== selectedUser));
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  }
+
+  const modeLabel = {
+    seniors:  `👥 Seniors you can learn from (Year ${Math.min(myYear+1,4)}–4)`,
+    batch:    `🤝 Your Batchmates (Year ${myYear})`,
+    juniors:  `🌱 Juniors you can mentor (Year 1–${Math.max(myYear-1,1)})`,
+  };
+
+  return (
+    <div className="animate-fade">
+      <div className="card" style={{ padding: '24px', marginBottom: 20 }}>
+        <div className="section-title" style={{ marginBottom: 8 }}>Mentor &amp; Peer Finder</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+          You are a <strong style={{color:'var(--accent-bfs)'}}>{YEAR_LABEL[myYear]} Year</strong> student. Who do you want to connect with?
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button onClick={() => search('seniors')} className={`btn ${mode==='seniors' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, minWidth: 160, background: mode !== 'seniors' ? 'rgba(255,255,255,0.05)' : '' }}>
+            👥 Find Senior Mentors
+          </button>
+          <button onClick={() => search('batch')} className={`btn ${mode==='batch' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, minWidth: 160, background: mode !== 'batch' ? 'rgba(255,255,255,0.05)' : '' }}>
+            🤝 Find My Batch
+          </button>
+          <button onClick={() => search('juniors')} className={`btn ${mode==='juniors' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, minWidth: 160, background: mode !== 'juniors' ? 'rgba(255,255,255,0.05)' : '', opacity: myYear === 1 ? 0.4 : 1, pointerEvents: myYear === 1 ? 'none' : 'auto' }}>
+            🌱 Mentor a Junior
+          </button>
+        </div>
+      </div>
+
+      {mode && (
+        <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
+          {modeLabel[mode]}
+        </div>
+      )}
+
+      {loading ? <div className="empty-state">Finding students...</div> :
+        <div className="users-grid">
+          {mode && results.length === 0 && <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+            {mode === 'seniors' && myYear === 4 ? "You're already in the final year — no seniors above you!" :
+             mode === 'juniors' && myYear === 1 ? "You're in 1st year — no juniors below you!" :
+             'No students found in this range.'}
+          </div>}
+          {!mode && <div className="empty-state" style={{ gridColumn: '1 / -1' }}>Pick an option above to discover students 👆</div>}
+          {results.map((u, i) => (
+            <div key={u.id + i} className="card user-card">
+              <Avatar user={u} size={48} animate />
+              <div className="user-name">{u.name}</div>
+              <div className="user-bio" style={{ color: 'var(--accent-bfs)', fontWeight: 600 }}>{YEAR_LABEL[u.year]} Year</div>
+              <div className="user-bio">{u.bio}</div>
+              <div className="user-bio">🎓 {u.branch || u.location}</div>
+            </div>
+          ))}
+        </div>
+      }
+    </div>
+  );
+}
+
+// ─── LOGIN SCREEN ──────────────────────────────────────────────────────────────
+function LoginScreen({ users, onLogin, onRegister, currentUserId }) {
+  const [mode, setMode] = useState('login');
+  const [selId, setSelId] = useState(users[0]?.id || '');
+  const [formData, setFormData] = useState({ name: '', bio: '', branch: 'CS', year: 1, interests: 'Coding, AI, Open Source' });
+
+  async function handleRegister() {
+    if(!formData.name) return;
+    const res = await fetch(`${API_BASE}/add-user`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...formData, interests: formData.interests.split(',').map(s=>s.trim()), connectTo: currentUserId || null })
+    }).then(r=>r.json());
+    if (res.success) onRegister(res.user);
+  }
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'var(--bg-primary)' }}>
+      <div className="card animate-fade" style={{ width: 440, padding: 30 }}>
+        <div className="logo" style={{justifyContent: 'center', marginBottom: 30, border: 'none', padding: 0}}>
+          <div className="logo-icon" style={{width: 48, height: 48, fontSize: 24}}>⬡</div>
+          <div className="logo-text" style={{fontSize: 24}}>Tech<span>Connect</span> API</div>
+        </div>
+        
+        <div style={{display:'flex', gap: 10, marginBottom: 24}}>
+          <button className={`btn ${mode === 'login' ? 'btn-primary' : ''}`} style={{flex: 1, background: mode !== 'login' ? 'var(--bg-secondary)' : ''}} onClick={()=>setMode('login')}>Select Peer</button>
+          <button className={`btn ${mode === 'register' ? 'btn-primary' : ''}`} style={{flex: 1, background: mode !== 'register' ? 'var(--bg-secondary)' : ''}} onClick={()=>setMode('register')}>New Student</button>
+        </div>
+
+        {mode === 'login' ? (
+          <div>
+            <label className="form-label">Pick an existing student profile</label>
+            <select className="form-select" style={{marginBottom: 20}} value={selId} onChange={e=>setSelId(e.target.value)}>
+              {users.map(u => <option key={u.id} value={u.id}>{u.name} - {u.bio}</option>)}
+            </select>
+            <button className="btn btn-primary" style={{width:'100%'}} onClick={()=>onLogin(selId)}>Access Network</button>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
+              \ud83d\udd12 Demo Mode \u2014 Profile-based access. No password required for academic demonstration.
+            </div>
+          </div>
+        ) : (
+          <div style={{display:'flex', flexDirection:'column', gap: 12}}>
+            <div><label className="form-label">Full Name</label><input type="text" className="form-input" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} /></div>
+            <div><label className="form-label">Tech Role (e.g. Software Engineer)</label><input type="text" className="form-input" value={formData.bio} onChange={e=>setFormData({...formData, bio: e.target.value})} /></div>
+            <div style={{display:'flex', gap: 10}}>
+              <div style={{flex: 1}}><label className="form-label">Branch</label><select className="form-select" value={formData.branch} onChange={e=>setFormData({...formData, branch: e.target.value})}><option value="CS">Computer Science (CS)</option><option value="IT">Information Technology (IT)</option><option value="AIDS">AI & Data Science (AIDS)</option><option value="Cyber Sec">Cyber Security</option></select></div>
+              <div style={{flex: 1}}><label className="form-label">College Year</label><select className="form-select" value={formData.year} onChange={e=>setFormData({...formData, year: parseInt(e.target.value)})}><option value={1}>1st Year</option><option value={2}>2nd Year</option><option value={3}>3rd Year</option><option value={4}>4th Year</option></select></div>
+            </div>
+            <div><label className="form-label">Interests (Comma Separated)</label><input type="text" className="form-input" value={formData.interests} onChange={e=>setFormData({...formData, interests: e.target.value})} /></div>
+            <button className="btn btn-primary" style={{marginTop: 10}} onClick={handleRegister}>Join Network</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ROUTING ──────────────────────────────────────────────────────────
+function App() {
+  const [users, setUsers] = useState([]);
+  const [graphEdges, setGraphEdges] = useState([]);
+  const [selectedUser, setSelectedUser] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [isAuth, setIsAuth] = useState(false);
+
+  async function loadData() {
+    try {
+      const uRes = await fetch(`${API_BASE}/users`);
+      const uData = await uRes.json();
+      setUsers(uData.users || []);
+      // Auto-set the selectedUser purely to populate UI options; rely on auth for blocking.
+      
+      const gRes = await fetch(`${API_BASE}/graph-data`);
+      const gData = await gRes.json();
+      setGraphEdges(gData.edges || []);
+    } catch (err) {
+      console.error("Network Fetch Error", err);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleLogin = (id) => { setSelectedUser(id); setIsAuth(true); };
+  const handleRegister = async (user) => { 
+    await loadData(); 
+    setSelectedUser(user.id);
+    setIsAuth(true); 
+  };
+
+  const NAV = [
+    { id: 'dashboard', label: 'Networking Role Finder', icon: '🎯' },
+    { id: 'graph', label: 'Student Graph Topology', icon: '◎' },
+    { id: 'pathfinder', label: '🤝 Connection Bridge', icon: '⤑' },
+    { id: 'communities', label: 'Know Your Circle', icon: '👥' },
+    { id: 'search', label: 'Mentor & Peer Finder', icon: '🌱' },
+    { id: 'advanced', label: '🚀 Smart Team Tools', icon: '⚙️' },
+  ];
+
+  if (loading) return <div className="empty-state">Booting up TechConnect Data Servers...</div>;
+  if (!isAuth) return <LoginScreen users={users} onLogin={handleLogin} onRegister={handleRegister} />;
+
+  return (
+    <div className="app-shell">
+      <div className="sidebar">
+        <div className="logo">
+          <div className="logo-icon">⬡</div>
+          <div className="logo-text">Tech<span>Connect</span></div>
+        </div>
+
+        <div className="nav-section" style={{marginBottom:20}}>
+          <div className="nav-label">Global Target Profile</div>
+          <select className="form-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name} - {u.bio}</option>)}
+          </select>
+        </div>
+
+        {/* Trie Search Bar */}
+        <div className="nav-section" style={{marginBottom:20}}>
+          <div className="nav-label">🔍 Find Student (Trie Search)</div>
+          <TrieSearchBar users={users} onSelect={setSelectedUser} />
+        </div>
+
+        <div className="nav-section" style={{marginBottom:20}}>
+          <div className="nav-label">Network Operations</div>
+          {NAV.map(n => (
+            <div key={n.id} className={`nav-item ${activeTab === n.id ? 'active' : ''}`} onClick={() => setActiveTab(n.id)}>
+              <span className="icon">{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
+        </div>
+
+        <div className="bottom-meta" style={{padding: 20, marginTop: 'auto', borderTop:'1px solid var(--border)', fontSize:12, color:'var(--text-secondary)', textAlign:'center'}}>
+          Logged in. Secure session active.
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="topbar">
+          <div style={{fontWeight:700,fontSize:16}}>{NAV.find(n => n.id === activeTab)?.label}</div>
+        </div>
+        <div className="content">
+          {activeTab === 'dashboard' && <RoleSearchTab selectedUser={selectedUser} users={users} />}
+          {activeTab === 'graph' && <GraphVisualization users={users} edges={graphEdges} selectedUser={selectedUser} onSelectUser={setSelectedUser} />}
+          {activeTab === 'pathfinder' && <PathfinderTab users={users} />}
+          {activeTab === 'communities' && <KnowYourCircleTab selectedUser={selectedUser} />}
+          {activeTab === 'search' && <MentorPeerFinderTab selectedUser={selectedUser} users={users} />}
+          {activeTab === 'advanced' && <AdvancedOperationsTab selectedUser={selectedUser} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<script>
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles, orbs, mouse = { x: -9999, y: -9999 }, t = 0;
+
+  const PARTICLE_COUNT = 80;
+  const MAX_DIST = 160;
+  const COLORS = [
+    [99, 102, 241],   // indigo
+    [139, 92, 246],   // violet
+    [192, 132, 252],  // purple
+    [52, 211, 153],   // emerald
+    [96, 165, 250],   // blue
+    [244, 114, 182],  // pink
+  ];
+
+  // Large glowing aurora blobs
+  const ORBS = [
+    { x: 0.15, y: 0.2,  r: 0.28, c: [99,102,241],  speed: 0.0007 },
+    { x: 0.75, y: 0.15, r: 0.25, c: [192,132,252],  speed: 0.0005 },
+    { x: 0.5,  y: 0.7,  r: 0.32, c: [52,211,153],   speed: 0.0009 },
+    { x: 0.85, y: 0.65, r: 0.22, c: [96,165,250],   speed: 0.0006 },
+    { x: 0.3,  y: 0.85, r: 0.2,  c: [244,114,182],  speed: 0.0008 },
+  ];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function mkParticle() {
+    const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 2.5 + 1.2,
+      c,
+      pulse: Math.random() * Math.PI * 2,
+    };
+  }
+
+  function init() {
+    resize();
+    particles = Array.from({ length: PARTICLE_COUNT }, mkParticle);
+  }
+
+  function drawAurora() {
+    for (const orb of ORBS) {
+      const ox = Math.sin(t * orb.speed * 1.7 + orb.x * 10) * W * 0.08;
+      const oy = Math.cos(t * orb.speed * 1.3 + orb.y * 10) * H * 0.08;
+      const cx = orb.x * W + ox;
+      const cy = orb.y * H + oy;
+      const radius = orb.r * Math.min(W, H) * (0.9 + 0.1 * Math.sin(t * orb.speed * 3));
+
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0,   `rgba(${orb.c.join(',')},0.12)`);
+      grad.addColorStop(0.4, `rgba(${orb.c.join(',')},0.06)`);
+      grad.addColorStop(1,   `rgba(${orb.c.join(',')},0)`);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+  }
+
+  function draw() {
+    t++;
+    ctx.clearRect(0, 0, W, H);
+
+    // Layer 1: Aurora blobs
+    drawAurora();
+
+    // Layer 2: Update particles with mouse repulsion
+    for (const p of particles) {
+      p.pulse += 0.025;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+
+      // Mouse repulsion
+      const dx = p.x - mouse.x, dy = p.y - mouse.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 120 && d > 0) {
+        const f = (120 - d) / 120 * 0.6;
+        p.x += (dx / d) * f;
+        p.y += (dy / d) * f;
+      }
+    }
+
+    // Layer 3: Glowing edges
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.28;
+          const c = particles[i].c;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(${c.join(',')},${alpha})`;
+          ctx.lineWidth = 0.9;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Layer 4: Glowing nodes with halo
+    for (const p of particles) {
+      const glow = p.r * (2.2 + 0.8 * Math.sin(p.pulse));
+      const c = p.c;
+
+      // Outer glow halo
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glow * 4);
+      grad.addColorStop(0,  `rgba(${c.join(',')},0.35)`);
+      grad.addColorStop(0.4,`rgba(${c.join(',')},0.1)`);
+      grad.addColorStop(1,  `rgba(${c.join(',')},0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, glow * 4, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, glow, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${c.join(',')},0.9)`;
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+  init();
+  draw();
+})();
+</script>
+</body>
+</html>
